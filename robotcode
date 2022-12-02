@@ -1,3 +1,4 @@
+#imported libraries 
 import numpy as np
 from math import pi, atan2
 import matplotlib.pyplot as plt
@@ -6,18 +7,23 @@ from roboticstoolbox import Bicycle, RandomPath, VehicleIcon
 #obstacle is in (2,2) and is square with 2 unit length
 obstacle1 = (2,2)
 obstacle2 = (4,4)
+#def for checking for logical error inputs
 def error_posx(x):
     return x in range(obstacle1[0],obstacle2[0]+1)
 def error_posy(x):
     return x in range(obstacle1[1],obstacle2[1]+1)
+    
+#initiate position lists that are empty so we can add to it new values based on user input 
 init_pos = []
 target_pos = []
 run = True
+#Take inputs from user regarding the initial position of the robot and the desired target 
 while(run):
     initx = float(input("please enter the x coordinate of the robot's initial position: "))
     inity = float(input("please enter the y coordinate of the robot's initial position: "))
     targetx = float(input("please enter the x coordinate of the target's position: "))
     targety = float(input("please enter the y coordinate of the target's position: "))
+    # Checks if the target and initial position are the position of an obstacle 
     if error_posx(initx) or error_posx(targetx) or error_posy(inity) or error_posy(targety):
         run = True
         print("enter values outside of the obstacle range")
