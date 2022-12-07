@@ -1,41 +1,168 @@
-#imported libraries 
-import numpy as np
-from math import pi, atan2
-import matplotlib.pyplot as plt
-from roboticstoolbox import Bicycle, RandomPath, VehicleIcon
+#imported libraries
+from roboticstoolbox import Bicycle, RandomPath, VehicleIcon,RangeBearingSensor,LandmarkMap #roboticstoolbox library for the robot commands
+from math import pi , atan2 #math library to carry out basic operations
+import numpy as np #to use the arange function
+import matplotlib.image as mpimg #to display the map
+import matplotlib.pyplot as plt #to plot the graph
 
-#obstacle is in (2,2) and is square with 2 unit length
-obstacle1 = (2,2)
-obstacle2 = (4,4)
-#def for checking for logical error inputs
-def error_posx(x):
-    return x in range(obstacle1[0],obstacle2[0]+1)
-def error_posy(x):
-    return x in range(obstacle1[1],obstacle2[1]+1)
+#obstacle on the left point lining
+obstlist = [[-45,50],[-45,7.5],[20,7.5],[20,2.5],[-45,2.5],[-45,17],[-25,17],[-25,-22],[-45,-22],[-45,50]]
+obst1 = (2,2)
+obst2 = (4,4)
+obst3 = (6,6)
+obst4 = (10,9)
+
+#definiton for the function that checks the needed steer change according to the obstacles presented to it
+def checkangle(angle):
+    right = False
+    middle = False
+    left = False
+    change = 0
+    #determining the position of the obstacles present close to it
+    for i in range(len(minangle)):
+        if angle[i] < -pi/12 and angle[i] > -pi/4:
+            right = True
+        if angle[i] > pi/12 and angle[i] < pi/4:
+            left = True
+        if angle[i] >= -pi/12 and angle[i] <= pi/12:
+            middle = True
+    #determining the needed angle outcome to evade those obstacles
+    if right == False and middle == False and left == True: 
+        change = -pi/4
+    elif right == True and middle == False and left == False:
+        change = pi/4 
+    elif right == False and middle == True and left == False:
+        change = -pi/4
+    elif right == True and middle == True and left == False: 
+        change = pi/4 
+    elif right == False and middle == True and left == True: 
+        change = -pi/4 
+    elif right == True and middle == True and left == True:
+        change = pi
+    else:
+        change = 0 
+    #returns the needed steer change
+    return(change)
+
+#definition for the functions that check the position of the inputted points compared to the preset obstacles
+def error_pos(lx,a,b): #lx is list of input points(2), a is coordinates 1 of the obstacle and b is coordinates 2 of the obstacle
+    return lx[0] in np.arange(a[0],b[0]+1) and lx[1] in np.arange(a[1],b[1]+1)
+
+#input while loops for error checking
+equalrun = True
+while(equalrun):
+    startrun = True
+    while(startrun):
+        init_pos = []
+        initx = float(input("please enter the x coordinate of the robot's initial position: "))
+        inity = float(input("please enter the y coordinate of the robot's initial position: "))
+        init_pos.append(initx)
+        init_pos.append(inity)
+        if error_pos(init_pos,obst1,obst2):
+            startrun = True
+            print("enter coordinates not in the obstacle")
+        else:
+            startrun = False
+    targetrun = True
+    while(targetrun):
+        goal = []
+        targetx = float(input("please enter the x coordinate of the target's position: "))
+        targety = float(input("please enter the y coordinate of the target's position: "))
+        goal.append(targetx)
+        goal.append(targety)
+        if error_pos(goal,obst1,obst2):
+            targetrun = True
+            print("enter coordinates not in the obstacle")
+        else:
+            targetrun = False
+    if initx == targetx and inity == targety:
+        equalrun = True
+        print("don't enter equal coordinates for start and target")
+    else:
+        equalrun = False
+
+print("initial position coordinates are ",init_pos)
+print("target coordinates are ",goal)
+
+#creating an object of the class bicycle and vehicleicon to initialise the robot
+anim = VehicleIcon('car', scale=4)
+veh = Bicycle(
+ animation=anim,
+ control=RandomPath,
+ dim=500,
+ x0 = [init_pos[0],init_pos[1],pi]
+ )
+veh.init(plot=True)
+
+#creating the target the robot has to navigate to
+
+goal_marker_style = {
+ 'marker': 'D',
+ 'markersize': 6,
+ 'color': 'b',
+}
+
+#plotting the goal and the graphs and the map
+plt.plot(goal[0], goal[1], **goal_marker_style)
+plt.xticks(np.arange(-50,50, 5))
+plt.yticks(np.arange(-50,50, 5))
+map = LandmarkMap(50,50)
+
+#creating the sensor which reads the distance and angle relative to the robot, plotting the map and showing the image
+sensor=RangeBearingSensor(robot=veh,map=map,animate=True)
+map.plot()
+image = mpimg.imread("projectmap.png")
+plt.imshow(image, extent = [-50,50,-50,50])
+print("Sensor readings: ", sensor.h(veh.x)) #printing the sensor readings for increased transperancy
+
+#splitting the sensor list into distance and angle to facilitate operating on them
+distance = [sensor.h(veh.x)[i][0] for i in range(len(sensor.h(veh.x)))]
+angle = [sensor.h(veh.x)[i][1] for i in range(len(sensor.h(veh.x)))]
+print(distance)
+print(angle)
+
+#array of list of checkpoints inputted by the target
+goal_arr=[[30,25],[25,-10]]
+goal_arr.append(goal)
+
+
+
+#for loop for iterating on the checkpoints provided
+for i in range(len(goal_arr)):
+    run = True
+    #determining the goal
+    goal = [goal_arr[i][0],goal_arr[i][1]]
+    #main loop for movement
+    while(run):
+        #determining the angle of the goal according to the robot
+        goal_heading = atan2((goal[1] - veh.x[1]),(goal[0] - veh.x[0]))
+        #calculating the steer
+        steer = goal_heading-veh.x[2]
+        #making sure steer doesn't go out of the range of the atan function
+        if steer>pi:
+            steer = steer-2*pi
+        #if condition to check wether it reached the goal or not
+        if( (abs(goal[0]-veh.x[0]) >1.3) or (abs(goal[1]-veh.x[1]) > 1.3) ):
+            run=True
+        else:
+            run=False
+        #updating the distance and angle lists as the robot moves
+        distance = [sensor.h(veh.x)[i][0] for i in range(len(sensor.h(veh.x)))]
+        angle = [sensor.h(veh.x)[i][1] for i in range(len(sensor.h(veh.x)))]
+        #creating empty list for the angles needed to dodge
+        minangle = []
+        #filling out the list using nested for and if loops
+        for i in range(len(distance)):
+            if distance[i] <= 7:
+                if angle[i] >= -pi/4 and angle[i] <= pi/4:
+                    minangle.append(angle[i])
+        #adjusting the steer of the robot as such
+        steer = steer + checkangle(minangle)
+        veh.step(4,steer)
+        veh._animation.update(veh.x)
+        plt.pause(0.0005)
     
-#initiate position lists that are empty so we can add to it new values based on user input 
-init_pos = []
-target_pos = []
-run = True
-#Take inputs from user regarding the initial position of the robot and the desired target 
-while(run):
-    initx = float(input("please enter the x coordinate of the robot's initial position: "))
-    inity = float(input("please enter the y coordinate of the robot's initial position: "))
-    targetx = float(input("please enter the x coordinate of the target's position: "))
-    targety = float(input("please enter the y coordinate of the target's position: "))
-    # Checks if the target and initial position are the position of an obstacle 
-    if error_posx(initx) or error_posx(targetx) or error_posy(inity) or error_posy(targety):
-        run = True
-        print("enter values outside of the obstacle range")
-    elif initx == targetx and inity == targety:
-        run = True
-        print("make sure the starting position and the goal are different")
-    else: 
-        run = False
+plt.pause(10)
 
-init_pos.append(initx)
-init_pos.append(inity)
-print(init_pos)
-target_pos.append(targetx)
-target_pos.append(targety)
-print(target_pos)
+
+
