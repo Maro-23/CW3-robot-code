@@ -91,7 +91,7 @@ while(equalrun):
     plt.yticks(np.arange(-50,50, 5))
     map = LandmarkMap(obstn,50)
 
-    #creating the sensor which reads the distance and angle relative to the robot, plotting the map and showing the image
+    #Plotting the grid and showing the map 
     map.plot()
     image = mpimg.imread("projectmap.png")
     plt.imshow(image, extent = [-50,50,-50,50])
